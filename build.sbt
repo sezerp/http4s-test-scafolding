@@ -14,8 +14,20 @@ val deps = Seq(
   "dev.zio"    %% "zio-interop-cats" % "3.1.1.0"
 )
 
+val scalacOpts = Seq(
+  "-Ywarn-unused:imports",
+  "-language:postfixOps"
+)
+
+val scalafixConfig = Seq(
+  semanticdbEnabled := true,
+  semanticdbVersion := scalafixSemanticdb.revision
+)
+
 lazy val root = (project in file("."))
   .settings(
     name := "http4s-client-stub",
-    libraryDependencies ++= deps
+    libraryDependencies ++= deps,
+    scalacOptions ++= scalacOpts
   )
+  .settings(scalafixConfig)
