@@ -1,6 +1,6 @@
 package com.pawelzabczynski
 
-import com.pawelzabczynski.http.HttpClientStub
+import com.pawelzabczynski.http.Http4sClientStub
 import org.http4s.Uri
 import zio.{ExitCode, Task, URIO, ZIO}
 import zio.interop.catz._
@@ -13,7 +13,7 @@ case class SomeResponse(id: String, name: String, age: Int)
 
 object Application extends zio.App {
 
-  val stubClient: HttpClientStub = HttpClientStub()
+  val stubClient: Http4sClientStub = Http4sClientStub()
     .whenRequestMatches(r => r.uri.path.startsWithString("/s1") && r.uri.query.has("name", "test"))
     .thenRespond(SomeResponse("id-1", "test", 25))
 
