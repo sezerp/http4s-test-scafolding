@@ -6,12 +6,9 @@ import cats.{MonadError, StackSafeMonad}
 import org.http4s.{EntityDecoder, EntityEncoder, HttpApp, Request, Response, Status, Uri}
 import org.http4s.Status.{InternalServerError, NotFound, Ok}
 import fs2.Stream
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder}
 import org.http4s.client.Client
-import zio.{RIO, Task, UIO, ZIO}
+import zio.{Task, ZIO}
 import zio.interop.catz._
-import org.http4s.dsl.io._
 
 import java.nio.charset.StandardCharsets
 import scala.util.{Failure, Success, Try}
@@ -22,6 +19,8 @@ class HttpClientStub(
     delegateHttp: Client[Task]
 ) extends Client[Task] {
   def whenRequestMatches(p: Request[Task] => Boolean): WhenRequest = new WhenRequest(p)
+
+  override def run(req: Request[Task]): Resource[Task, Response[Task]] = delegateHttp.run(req)
 
   class WhenRequest(p: Request[Task] => Boolean) {
     def thenRespondOk(): HttpClientStub          = thenRespondWithCode(Ok, "")
@@ -43,24 +42,23 @@ class HttpClientStub(
       Response[Task](status = status, body = Stream.emits(body.getBytes(StandardCharsets.UTF_8)))
     )
     def thenRespond(resp: => Response[Task]): HttpClientStub = {
-      val m: PartialFunction[Request[Task], Task[Response[Task]]] = {
+      val nextM: PartialFunction[Request[Task], Task[Response[Task]]] = {
         case r if p(r) => monad.map(monad.unit)(_ => resp)
       }
+      val m = matchers.orElse(nextM)
 
       val delegate = Client.apply[Task](req =>
         Resource.eval {
-          Try(matchers.orElse(m).apply(req)) match {
+          Try(m.apply(req)) match {
             case Success(response) => response
             case Failure(exception) =>
               monad.raiseError(new RuntimeException(s"Behaviour not stubbed. Request: $req", exception))
           }
         }
       )
-      new HttpClientStub(monad, matchers.orElse(m), delegate)
+      new HttpClientStub(monad, m, delegate)
     }
   }
-
-  override def run(req: Request[Task]): Resource[Task, Response[Task]] = delegateHttp.run(req)
 
   override def fetch[A](req: Request[Task])(f: Response[Task] => Task[A]): Task[A] = delegateHttp.fetch(req)(f)
 
