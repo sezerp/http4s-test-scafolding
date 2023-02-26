@@ -13,7 +13,7 @@ case class SomeResponse(id: String, name: String, age: Int)
 
 object Application extends zio.App {
 
-  val stubClient = HttpClientStub()
+  val stubClient: HttpClientStub = HttpClientStub()
     .whenRequestMatches(r => r.uri.path.startsWithString("/s1") && r.uri.query.has("name", "test"))
     .thenRespond(SomeResponse("id-1", "test", 25))
 
@@ -22,7 +22,7 @@ object Application extends zio.App {
   }
 
   val response = for  {
-    r <- makeCall(stubClient)
+    r <- makeCall(stubClient.stub)
     _ <- ZIO.effect(println(s"Response body: $r "))
   } yield ()
 
