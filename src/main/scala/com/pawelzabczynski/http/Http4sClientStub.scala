@@ -46,12 +46,11 @@ class Http4sClientStub(
       Response[Task](status = status).withEntity(body)
     )
     def thenRespond(resp: => Response[Task]): Http4sClientStub = {
-      val nextM: PartialFunction[Request[Task], Task[Response[Task]]] = {
+      val m: PartialFunction[Request[Task], Task[Response[Task]]] = {
         case r if p(r) => monad.map(monad.unit)(_ => resp)
       }
-      val m = matchers.orElse(nextM)
 
-      new Http4sClientStub(monad, m)
+      new Http4sClientStub(monad, matchers.orElse(m))
     }
   }
 }
